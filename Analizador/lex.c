@@ -3,79 +3,99 @@
 #include <string.h>
 #include <ctype.h>
 
-typedef enum { q0, q1, q2, q3, q4, q5, q6, q7, C0, C1, C2, C3, C4, ERROR } State;
+#define MAX_LINE_LENGTH 1000
 
-State transicion(State current, char input) {
+typedef enum { 
+    START, INTEGER, ZERO, FLOAT, FLOAT_FRACTION, FLOAT_DOT, EXPONENT, EXPONENT_SIGN, EXPONENT_NUMBER, FLOAT_SUFFIX, ERROR 
+} State;
+
+State transition(State current, char input) {
     switch (current) {
-        case q0:
-            if (isdigit(input)) return input == '0' ? q1 : q2;
-            if (input == '.') return q3;
+        case START:
+            if (input == '0') return ZERO;
+            else if (isdigit(input)) return INTEGER;
+            else if (input == '.') return FLOAT_DOT; // Handle the initial dot case
+            else if (input == '+' || input == '-') return START;
             break;
-        case q1:
-            if (isdigit(input)) return q2;
-            if (input == '.') return q3;
-            if (input == 'E' || input == 'e') return q5;
+        case ZERO:
+            if (input == '.') return FLOAT_FRACTION;
+            else if (input == 'E' || input == 'e') return EXPONENT;
             break;
-        case q2:
-            if (isdigit(input)) return q2;
-            if (input == '.') return q3;
-            if (input == 'E' || input == 'e') return q5;
+        case INTEGER:
+            if (isdigit(input)) return INTEGER;
+            else if (input == '.') return FLOAT_FRACTION;
+            else if (input == 'E' || input == 'e') return EXPONENT;
             break;
-        case q3:
-            if (isdigit(input)) return q4;
+        case FLOAT_DOT:
+            if (isdigit(input)) return FLOAT_FRACTION;
+            else return ERROR; // Error if there are no digits after the dot
+        case FLOAT_FRACTION:
+            if (isdigit(input)) return FLOAT_FRACTION;
+            else if (input == 'E' || input == 'e') return EXPONENT;
+            else if (input == 'f' || input == 'F') return FLOAT_SUFFIX;
             break;
-        case q4:
-            if (isdigit(input)) return q4;
-            if (input == 'E' || input == 'e') return q5;
+        case EXPONENT:
+            if (isdigit(input)) return EXPONENT_NUMBER;
+            else if (input == '+' || input == '-') return EXPONENT_SIGN;
             break;
-        case q5:
-            if (isdigit(input) || input == '+' || input == '-') return q6;
+        case EXPONENT_SIGN:
+            if (isdigit(input)) return EXPONENT_NUMBER;
             break;
-        case q6:
-            if (isdigit(input)) return q7;
+        case EXPONENT_NUMBER:
+            if (isdigit(input)) return EXPONENT_NUMBER;
+            else if (input == 'f' || input == 'F') return FLOAT_SUFFIX;
             break;
-        case q7:
-            if (isdigit(input)) return q7;
-            break;
+        case FLOAT_SUFFIX:
+            return ERROR; // Any further input after the 'f' is an error
         default:
-            break;
+            return ERROR;
     }
     return ERROR;
 }
 
-int is_accepting(State state) {
-    return state == q2 || state == q4 || state == q7;
+int is_numeric_constant(const char *str) {
+    State state = START;
+    int i = 0;
+    while (str[i] != '\0') {
+        state = transition(state, str[i]);
+        if (state == ERROR) {
+            return 0; // Indicates error
+        }
+        i++;
+    }
+    return (state == INTEGER || state == ZERO || state == FLOAT_FRACTION || state == EXPONENT_NUMBER || state == FLOAT_SUFFIX);
 }
 
-void analizar(const char *filename) {
+void analyze_line(const char *line, int line_number) {
+    char *token;
+    char buffer[MAX_LINE_LENGTH];
+    strcpy(buffer, line);
+
+    token = strtok(buffer, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
+    while (token != NULL) {
+        if (isdigit(token[0]) || token[0] == '.' || token[0] == '+' || token[0] == '-') {
+            if (!is_numeric_constant(token)) {
+                printf("Error en línea %d: %s", line_number, line);
+                return;
+            }
+        }
+        token = strtok(NULL, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
+    }
+}
+
+void analyze_file(const char *filename) {
     FILE *file = fopen(filename, "r");
     if (!file) {
-        perror("Error al abrir");
+        perror("No se pudo abrir el archivo");
         exit(EXIT_FAILURE);
     }
 
-    char linea[256];
-    int lineaNumero = 1;
-    int error_found = 0;
-    while (fgets(linea, sizeof(linea), file)) {
-        char *token = strtok(linea, " \t\n,;(){}");
-        while (token) {
-            State state = q0;
-            for (int i = 0; i < strlen(token); ++i) {
-                state = transicion(state, token[i]);
-                if (state == ERROR) break;
-            }
-            if (!is_accepting(state) && (isdigit(token[0]) || token[0] == '.' || token[0] == '-' || token[0] == '+')) {
-                printf("Error en línea %d. Token inválido: %s\n", lineaNumero, token);
-                error_found = 1;
-            }
-            token = strtok(NULL, " \t\n,;(){}");
-        }
-        ++lineaNumero;
-    }
+    char line[MAX_LINE_LENGTH];
+    int line_number = 1;
 
-    if (!error_found) {
-        printf("No hay errores de análisis léxico en el archivo %s.\n", filename);
+    while (fgets(line, MAX_LINE_LENGTH, file)) {
+        analyze_line(line, line_number);
+        line_number++;
     }
 
     fclose(file);
@@ -83,6 +103,6 @@ void analizar(const char *filename) {
 
 int main() {
     const char *filename = "EjemploPracticaAnalizador.java";
-    analizar(filename);
+    analyze_file(filename);
     return 0;
 }
