@@ -6,103 +6,205 @@
 #define MAX_LINE_LENGTH 1000
 
 typedef enum { 
-    START, INTEGER, ZERO, FLOAT, FLOAT_FRACTION, FLOAT_DOT, EXPONENT, EXPONENT_SIGN, EXPONENT_NUMBER, FLOAT_SUFFIX, ERROR 
+    INICIO, C0, CERO, C2, C1, FLOT_PUNTO, C3, SIGNO_EXP, NUM_EXP, C4, C5, C6, COM_MULTI, FIN_COM, ERROR, C7, C8, C9 
 } State;
 
-State transition(State current, char input) {
-    switch (current) {
-        case START:
-            if (input == '0') return ZERO;
-            else if (isdigit(input)) return INTEGER;
-            else if (input == '.') return FLOAT_DOT; // Handle the initial dot case
-            else if (input == '+' || input == '-') return START;
+typedef enum { 
+    TIPO_INT, TIPO_FLOAT, TIPO_DOUBLE, TIPO_DESCONOCIDO 
+} TipoVar;
+
+// Comentarios sobre los estados de aceptación (C0 a C9)
+// C0: Constante entera
+// C1: Constante doble
+// C2: Constante flotante
+// C3: Notación exponencial
+// C4: Sufijo flotante
+// C5: Identificador válido en Java
+// C6: Comentarios (una línea y múltiples líneas)
+// C7: Palabras reservadas de Java
+// C8: Operadores de comparación y asignación
+// C9: Operadores aritméticos
+
+State transicion(State actual, char entrada) {
+    switch (actual) {
+        case INICIO:
+            if (entrada == '0') return CERO;
+            else if (isdigit(entrada)) return C0; // Constante entera
+            else if (entrada == '.') return FLOT_PUNTO;
+            else if (entrada == '+' || entrada == '-') return INICIO;
+            else if (isalpha(entrada) || entrada == '_') return C5; // Identificador válido en Java
+            else if (entrada == '/') return C6; // Comentario
+            else if (entrada == '<' || entrada == '>' || entrada == '=' || entrada == '!') return C8; // Operadores de comparación y asignación
+            else if (entrada == '+' || entrada == '-' || entrada == '*' || entrada == '/' || entrada == '%') return C9; // Operadores aritméticos
             break;
-        case ZERO:
-            if (input == '.') return FLOAT_FRACTION;
-            else if (input == 'E' || input == 'e') return EXPONENT;
+        case CERO:
+            if (entrada == '.') return FLOT_PUNTO;
+            else if (entrada == 'E' || entrada == 'e') return C3; // Notación exponencial
             break;
-        case INTEGER:
-            if (isdigit(input)) return INTEGER;
-            else if (input == '.') return FLOAT_FRACTION;
-            else if (input == 'E' || input == 'e') return EXPONENT;
+        case C0: // Constante entera
+            if (isdigit(entrada)) return C0;
+            else if (entrada == '.') return FLOT_PUNTO;
+            else if (entrada == 'E' || entrada == 'e') return C3; // Notación exponencial
             break;
-        case FLOAT_DOT:
-            if (isdigit(input)) return FLOAT_FRACTION;
-            else return ERROR; // Error if there are no digits after the dot
-        case FLOAT_FRACTION:
-            if (isdigit(input)) return FLOAT_FRACTION;
-            else if (input == 'E' || input == 'e') return EXPONENT;
-            else if (input == 'f' || input == 'F') return FLOAT_SUFFIX;
+        case FLOT_PUNTO:
+            if (isdigit(entrada)) return C1; // Constante doble
+            else return ERROR;
+        case C1: // Constante doble
+            if (isdigit(entrada)) return C1;
+            else if (entrada == 'E' || entrada == 'e') return C3; // Notación exponencial
+            else if (entrada == 'f' || entrada == 'F') return C4; // Sufijo flotante
             break;
-        case EXPONENT:
-            if (isdigit(input)) return EXPONENT_NUMBER;
-            else if (input == '+' || input == '-') return EXPONENT_SIGN;
+        case C3: // Notación exponencial
+            if (isdigit(entrada)) return NUM_EXP;
+            else if (entrada == '+' || entrada == '-') return SIGNO_EXP;
             break;
-        case EXPONENT_SIGN:
-            if (isdigit(input)) return EXPONENT_NUMBER;
+        case SIGNO_EXP:
+            if (isdigit(entrada)) return NUM_EXP;
             break;
-        case EXPONENT_NUMBER:
-            if (isdigit(input)) return EXPONENT_NUMBER;
-            else if (input == 'f' || input == 'F') return FLOAT_SUFFIX;
+        case NUM_EXP:
+            if (isdigit(entrada)) return NUM_EXP;
+            else if (entrada == 'f' || entrada == 'F') return C4; // Sufijo flotante
             break;
-        case FLOAT_SUFFIX:
-            return ERROR; // Any further input after the 'f' is an error
+        case C4: // Sufijo flotante
+            return C4;
+        case C5: // Identificador válido en Java
+            if (isalnum(entrada) || entrada == '_') return C5;
+            break;
+        case C6:
+            if (entrada == '\n') return INICIO;
+            return C6;
+        case COM_MULTI:
+            if (entrada == '*') return FIN_COM;
+            return COM_MULTI;
+        case FIN_COM:
+            if (entrada == '/') return INICIO;
+            else if (entrada != '*') return COM_MULTI;
+            return FIN_COM;
+        case C8: // Operadores de comparación y asignación
+            if (entrada == '=' || entrada == '<' || entrada == '>' || entrada == '!') return C8;
+            return INICIO;
+        case C9: // Operadores aritméticos
+            if (entrada == '+' || entrada == '-' || entrada == '*' || entrada == '/' || entrada == '%') return C9;
+            return INICIO;
         default:
             return ERROR;
     }
     return ERROR;
 }
 
-int is_numeric_constant(const char *str) {
-    State state = START;
+int es_const_num(const char *str, TipoVar tipo) {
+    if (str[strlen(str) - 1] == 'f' || str[strlen(str) - 1] == 'F') {
+        return 1;
+    }
+
+    State estado = INICIO;
     int i = 0;
     while (str[i] != '\0') {
-        state = transition(state, str[i]);
-        if (state == ERROR) {
-            return 0; // Indicates error
+        estado = transicion(estado, str[i]);
+        if (estado == ERROR) {
+            return 0;
         }
         i++;
     }
-    return (state == INTEGER || state == ZERO || state == FLOAT_FRACTION || state == EXPONENT_NUMBER || state == FLOAT_SUFFIX);
+
+    if (tipo == TIPO_INT && strchr(str, '.') != NULL) {
+        return 0;
+    }
+
+    return (estado == C0 || estado == CERO || estado == C1 || estado == NUM_EXP || estado == C4);
 }
 
-void analyze_line(const char *line, int line_number) {
-    char *token;
+void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
     char buffer[MAX_LINE_LENGTH];
-    strcpy(buffer, line);
+    strcpy(buffer, linea);
 
-    token = strtok(buffer, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
-    while (token != NULL) {
-        if (isdigit(token[0]) || token[0] == '.' || token[0] == '+' || token[0] == '-') {
-            if (!is_numeric_constant(token)) {
-                printf("Error en línea %d: %s", line_number, line);
-                return;
+    TipoVar tipo_actual = TIPO_DESCONOCIDO;
+    State estado = INICIO;
+
+    if (*com_multi) {
+        char *fin_com = strstr(buffer, "*/");
+        if (fin_com != NULL) {
+            *com_multi = 0;
+            strcpy(buffer, fin_com + 2);
+        } else {
+            return; // Toda la línea está dentro de un comentario de bloque
+        }
+    }
+
+    char *token = buffer;
+    while (*token != '\0') {
+        if (estado == INICIO) {
+            if (token[0] == '/' && token[1] == '*') {
+                *com_multi = 1;
+                token = strstr(token, "*/");
+                if (token != NULL) {
+                    *com_multi = 0;
+                    token += 2;
+                } else {
+                    break;
+                }
+            } else if (token[0] == '/' && token[1] == '/') {
+                break; // Ignorar el resto de la línea
+            } else {
+                // Analizar el token como normal
+                char *subtoken = strtok(token, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
+                while (subtoken != NULL) {
+                    if (strcmp(subtoken, "int") == 0 || strcmp(subtoken, "float") == 0 || strcmp(subtoken, "double") == 0 ||
+                        strcmp(subtoken, "public") == 0 || strcmp(subtoken, "private") == 0 || strcmp(subtoken, "class") == 0 || strcmp(subtoken, "void") == 0) {
+                        estado = C7; // Palabras reservadas de Java
+                    } else {
+                        if (isdigit(subtoken[0]) || subtoken[0] == '.' || subtoken[0] == '+' || subtoken[0] == '-') {
+                            if (!es_const_num(subtoken, tipo_actual)) {
+                                printf("Error en línea %d: %s", numero_linea, linea);
+                                return;
+                            }
+                        } else if (isalpha(subtoken[0]) || subtoken[0] == '_') {
+                            estado = INICIO;
+                            int i = 0;
+                            while (subtoken[i] != '\0') {
+                                estado = transicion(estado, subtoken[i]);
+                                if (estado == ERROR) {
+                                    printf("Error en línea %d: %s", numero_linea, linea);
+                                    return;
+                                }
+                                i++;
+                            }
+                            if (estado != C5) { // Identificador válido en Java
+                                printf("Error en línea %d: %s", numero_linea, linea);
+                                return;
+                            }
+                        }
+                        tipo_actual = TIPO_DESCONOCIDO;
+                    }
+                    subtoken = strtok(NULL, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
+                }
             }
         }
-        token = strtok(NULL, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
+        token++;
     }
 }
 
-void analyze_file(const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
+void analizar_archivo(const char *nombre_archivo) {
+    FILE *archivo = fopen(nombre_archivo, "r");
+    if (!archivo) {
         perror("No se pudo abrir el archivo");
         exit(EXIT_FAILURE);
     }
 
-    char line[MAX_LINE_LENGTH];
-    int line_number = 1;
+    char linea[MAX_LINE_LENGTH];
+    int numero_linea = 1;
+    int com_multi = 0;
 
-    while (fgets(line, MAX_LINE_LENGTH, file)) {
-        analyze_line(line, line_number);
-        line_number++;
+    while (fgets(linea, MAX_LINE_LENGTH, archivo)) {
+        analizar_linea(linea, numero_linea, &com_multi);
+        numero_linea++;
     }
 
-    fclose(file);
+    fclose(archivo);
 }
 
 int main() {
-    const char *filename = "EjemploPracticaAnalizador.java";
-    analyze_file(filename);
+    const char *nombre_archivo = "EjemploPracticaAnalizador.java";
+    analizar_archivo(nombre_archivo);
     return 0;
 }
