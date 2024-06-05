@@ -6,7 +6,7 @@
 #define MAX_LINE_LENGTH 1000
 
 typedef enum { 
-    INICIO, C0, CERO, C2, C1, FLOT_PUNTO, C3, SIGNO_EXP, NUM_EXP, C4, C5, C6, COM_MULTI, FIN_COM, ERROR, C7, C8, C9 
+    INICIO, C0, CERO, C2, C1, FLOT_PUNTO, C3, SIGNO_EXP, NUM_EXP, C4, C5, C6, COM_MULTI, FIN_COM, ERROR, C7, C8, C9, B, F, P, S, RESERVADA, OPERADOR 
 } State;
 
 typedef enum { 
@@ -20,11 +20,12 @@ State transicion(State actual, char entrada) {
             if (entrada == '0') return CERO;
             else if (isdigit(entrada)) return C0; // Constante entera
             else if (entrada == '.') return FLOT_PUNTO;
-            else if (entrada == '+' || entrada == '-') return INICIO;
+            else if (entrada == '+' || entrada == '-') return S; // Signos de valor numérico
             else if (isalpha(entrada) || entrada == '_') return C5; // Identificador válido en Java
             else if (entrada == '/') return C6; // Comentario
             else if (entrada == '<' || entrada == '>' || entrada == '=' || entrada == '!') return C8; // Operadores de comparación y asignación
             else if (entrada == '*' || entrada == '%') return C9; // Operadores aritméticos
+            else if (entrada == ';') return F; // Fin de sentencia
             break;
         case CERO:
             if (entrada == '.') return FLOT_PUNTO;
@@ -75,6 +76,11 @@ State transicion(State actual, char entrada) {
             return INICIO;
         case C9: // Operadores aritméticos
             return INICIO;
+        case S: // Signos de valor numérico
+            if (isdigit(entrada)) return C0;
+            break;
+        case F: // Fin de sentencia
+            return INICIO;
         default:
             return ERROR;
     }
@@ -109,6 +115,7 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
 
     TipoVar tipo_actual = TIPO_DESCONOCIDO;
     State estado = INICIO;
+    int espera_tipo = 0; // Indica si se espera un tipo de variable después de una palabra reservada
 
     if (*com_multi) {
         char *fin_com = strstr(buffer, "*/");
@@ -138,13 +145,31 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
                 // Analizar el token como normal
                 char *subtoken = strtok(token, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
                 while (subtoken != NULL) {
+                    printf("Analizando token en linea %d: %s\n", numero_linea, subtoken); // Depuración
                     if (strcmp(subtoken, "int") == 0 || strcmp(subtoken, "float") == 0 || strcmp(subtoken, "double") == 0 ||
                         strcmp(subtoken, "public") == 0 || strcmp(subtoken, "private") == 0 || strcmp(subtoken, "class") == 0 || strcmp(subtoken, "void") == 0) {
-                        estado = C7; // Palabras reservadas de Java
+                        if (espera_tipo) {
+                            printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Palabra reservada seguida de otra palabra reservada
+                            return;
+                        }
+                        estado = RESERVADA; // Estado para palabras reservadas de Java
+                        espera_tipo = 1;
+                        printf("Palabra reservada en linea %d: %s\n", numero_linea, subtoken); // Depuración
+                    } else if (strchr("+-*/%", subtoken[0])) {
+                        if (espera_tipo) {
+                            printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Operador seguido de palabra reservada
+                            return;
+                        }
+                        estado = OPERADOR; // Estado para operadores aritméticos
+                        printf("Operador en linea %d: %s\n", numero_linea, subtoken); // Depuración
                     } else {
                         if (isdigit(subtoken[0]) || subtoken[0] == '.' || subtoken[0] == '+' || subtoken[0] == '-') {
+                            if (espera_tipo) {
+                                printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Palabra reservada seguida de un número
+                                return;
+                            }
                             if (!es_const_num(subtoken, tipo_actual)) {
-                                printf("Error en linea %d: %s\n", numero_linea, linea);
+                                printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
                                 return;
                             }
                         } else if (isalpha(subtoken[0]) || subtoken[0] == '_') {
@@ -153,33 +178,27 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
                             while (subtoken[i] != '\0') {
                                 estado = transicion(estado, subtoken[i]);
                                 if (estado == ERROR) {
-                                    printf("Error en linea %d: %s\n", numero_linea, linea);
+                                    printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
                                     return;
                                 }
                                 i++;
                             }
                             if (estado != C5) { // Identificador válido en Java
-                                printf("Error en linea %d: %s\n", numero_linea, linea);
+                                printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
                                 return;
+                            }
+                            if (espera_tipo) {
+                                espera_tipo = 0; // Después de un identificador, ya no se espera un tipo
                             }
                         } else {
                             // Manejo de operadores y caracteres inválidos
-                            if (strchr("+-*/%", subtoken[0]) && strlen(subtoken) > 1) {
-                                printf("Error en linea %d: %s\n", numero_linea, linea);
-                                return;
-                            }
                             if (strpbrk(subtoken, "#")) {
-                                printf("Error en linea %d: %s\n", numero_linea, linea);
+                                printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
+                                return;
+                            } else {
+                                printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
                                 return;
                             }
-                            if (strcmp(subtoken, "public") == 0 || strcmp(subtoken, "temp1") == 0 || strcmp(subtoken, "char") == 0) {
-                                if (strchr(buffer, '*') || strchr(buffer, '>') || strchr(buffer, '+')) {
-                                    printf("Error en linea %d: %s\n", numero_linea, linea);
-                                    return;
-                                }
-                            }
-                            printf("Error en linea %d: %s\n", numero_linea, linea);
-                            return;
                         }
                         tipo_actual = TIPO_DESCONOCIDO;
                     }

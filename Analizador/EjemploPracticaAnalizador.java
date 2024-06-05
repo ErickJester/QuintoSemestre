@@ -1,9 +1,9 @@
 public class EjemploPracticaAnalizador {
     public static void main(String[] args) {
         // Constantes enteras correctas
-        int entero1 = 123;       // Correcto
+        int entero1 = 123       // Correcto
         int entero2 = 0;         // Correcto
-
+        
         // Constantes flotantes correctas
         float flotante1 = 1.23f; // Correcto
         float flotante2 = 0.456f;// Correcto
@@ -14,11 +14,11 @@ public class EjemploPracticaAnalizador {
         double doble3 = 1.23E10; // Correcto
         double doble4 = 0.0;     // Correcto
 
-        int temp1;
+        
         temp1 * 8.23;
         public > 100
         int + char
-        
+        int temp1
         // Otros ejemplos
         int ejemploCorrecto1 = 789;               // Correcto
         float ejemploFlotanteCorrecto = 12.34f;   // Correcto
@@ -66,11 +66,11 @@ public class EjemploPracticaAnalizador {
         int resultado = 1 / 0; // Error: division por cero
         int operacion = 5 * * 2; // Error: uso incorrecto de operador aritmetico
 
-        /*
+        
           Errores extra
-          int errorEntero1 = 01;     // Error: los enteros no deben comenzar con cero
+          int errorEntero1 = 1     // Error: los enteros no deben comenzar con cero
           float errorFlotante1 = 1.; // Error: falta la parte decimal
           double errorDoble1 = 1.23E-; // Error: exponente incompleto
-        */
+        
     }
 }
