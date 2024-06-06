@@ -1,8 +1,8 @@
 public class EjemploPracticaAnalizador {
     public static void main(String[] args) {
         // Constantes enteras correctas
-        int entero1 = 123       // Correcto
-        int entero2 = 0;         // Correcto
+        int x = 123;       // Correcto
+        int y  0;         // Correcto
         
         // Constantes flotantes correctas
         float flotante1 = 1.23f; // Correcto
@@ -71,6 +71,8 @@ public class EjemploPracticaAnalizador {
           int errorEntero1 = 1     // Error: los enteros no deben comenzar con cero
           float errorFlotante1 = 1.; // Error: falta la parte decimal
           double errorDoble1 = 1.23E-; // Error: exponente incompleto
+
+        public +;
         
     }
 }
