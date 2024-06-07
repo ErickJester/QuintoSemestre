@@ -72,7 +72,7 @@ public class EjemploPracticaAnalizador {
           float errorFlotante1 = 1.; // Error: falta la parte decimal
           double errorDoble1 = 1.23E-; // Error: exponente incompleto
 
-        public +;
+        public +
         
     }
 }

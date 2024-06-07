@@ -13,38 +13,37 @@ typedef enum {
     TIPO_INT, TIPO_FLOAT, TIPO_DOUBLE, TIPO_DESCONOCIDO 
 } TipoVar;
 
-// Función de transición
 State transicion(State actual, char entrada) {
     switch (actual) {
         case INICIO:
             if (entrada == '0') return CERO;
             else if (isdigit(entrada)) return C0; // Constante entera
             else if (entrada == '.') return FLOT_PUNTO;
-            else if (entrada == '+' || entrada == '-') return S; // Signos de valor numérico
-            else if (isalpha(entrada) || entrada == '_') return C5; // Identificador válido en Java
+            else if (entrada == '+' || entrada == '-') return S; // Signos de valor numerico
+            else if (isalpha(entrada) || entrada == '_') return C5; // Identificador valido de Java
             else if (entrada == '/') return C6; // Comentario
-            else if (entrada == '<' || entrada == '>' || entrada == '=' || entrada == '!') return C8; // Operadores de comparación y asignación
-            else if (entrada == '*' || entrada == '%') return C9; // Operadores aritméticos
+            else if (entrada == '<' || entrada == '>' || entrada == '=' || entrada == '!') return C8; // Operadores de comparacion y asignacion
+            else if (entrada == '*' || entrada == '%') return C9; // Operadores aritmeticos
             else if (entrada == ';') return F; // Fin de sentencia
             break;
         case CERO:
             if (entrada == '.') return FLOT_PUNTO;
-            else if (entrada == 'E' || entrada == 'e') return C3; // Notación exponencial
+            else if (entrada == 'E' || entrada == 'e') return C3; // Notacion exponencial
             break;
         case C0: // Constante entera
             if (isdigit(entrada)) return C0;
             else if (entrada == '.') return FLOT_PUNTO;
-            else if (entrada == 'E' || entrada == 'e') return C3; // Notación exponencial
+            else if (entrada == 'E' || entrada == 'e') return C3; // Notacion exponencial
             break;
         case FLOT_PUNTO:
             if (isdigit(entrada)) return C1; // Constante doble
             else return ERROR;
         case C1: // Constante doble
             if (isdigit(entrada)) return C1;
-            else if (entrada == 'E' || entrada == 'e') return C3; // Notación exponencial
+            else if (entrada == 'E' || entrada == 'e') return C3; // Notacion exponencial
             else if (entrada == 'f' || entrada == 'F') return C4; // Sufijo flotante
             break;
-        case C3: // Notación exponencial
+        case C3: // Notacion exponencial
             if (isdigit(entrada)) return NUM_EXP;
             else if (entrada == '+' || entrada == '-') return SIGNO_EXP;
             break;
@@ -71,12 +70,12 @@ State transicion(State actual, char entrada) {
             if (entrada == '/') return INICIO;
             else if (entrada != '*') return COM_MULTI;
             return FIN_COM;
-        case C8: // Operadores de comparación y asignación
+        case C8: // Operadores de comparacion y asignacion
             if (entrada == '=') return C8;
             return INICIO;
-        case C9: // Operadores aritméticos
+        case C9: // Operadores aritmeticos
             return INICIO;
-        case S: // Signos de valor numérico
+        case S: // Signos de valor numerico
             if (isdigit(entrada)) return C0;
             break;
         case F: // Fin de sentencia
@@ -108,7 +107,6 @@ int es_const_num(const char *str, TipoVar tipo) {
 
     return (estado == C0 || estado == CERO || estado == C1 || estado == NUM_EXP || estado == C4);
 }
-
 void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
     char buffer[MAX];
     strcpy(buffer, linea);
@@ -125,7 +123,7 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
             *com_multi = 0;
             strcpy(buffer, fin_com + 2);
         } else {
-            return; // Toda la línea está dentro de un comentario de bloque
+            return; // Toda la linea está dentro de un comentario de bloque
         }
     }
 
@@ -142,41 +140,49 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
                     break;
                 }
             } else if (token[0] == '/' && token[1] == '/') {
-                break; // Ignorar el resto de la línea
+                break; // Ignorar el resto de la linea
             } else {
                 // Analizar el token como normal
                 char *subtoken = strtok(token, " ,;(){}[]<>+-*/%=&|^!~\n\t\r");
                 while (subtoken != NULL) {
-                    //printf("Analizando token en linea %d: %s\n", numero_linea, subtoken); // Depuración
+                    //printf("Analizando subtoken en linea %d: '%s'\n", numero_linea, subtoken); // Depuración adicional
+
                     if (strcmp(subtoken, "int") == 0 || strcmp(subtoken, "float") == 0 || strcmp(subtoken, "double") == 0 ||
                         strcmp(subtoken, "public") == 0 || strcmp(subtoken, "private") == 0 || strcmp(subtoken, "class") == 0 || strcmp(subtoken, "void") == 0) {
-                        if (espera_tipo && strcmp(subtoken, "class") != 0) {
+
+                        //printf("Palabra reservada encontrada en linea %d: '%s'\n", numero_linea, subtoken); // Depuración
+
+                        if (espera_tipo && strcmp(subtoken, "class") != 0) { // Permitir "class" después de "public"
                             printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Palabra reservada seguida de otra palabra reservada
                             return;
                         }
                         estado = RESERVADA; // Estado para palabras reservadas de Java
                         espera_tipo = 1;
+
                         //printf("Palabra reservada en linea %d: %s\n", numero_linea, subtoken); // Depuración
-                    } else if (subtoken[0] == ';') {
-                        estado = F; // Estado para fin de sentencia
-                        fin_sentencia = 1;
-                        printf("Fin de sentencia en linea %d: %s\n", numero_linea, subtoken); // Depuración
-                    } else if (strchr("+-*/%", subtoken[0])) {
+
+                        if (estado == RESERVADA) {
+                            //printf("\n\t Reservada ");
+                        }
+                    } else if (strcmp(subtoken, "+") == 0 || strcmp(subtoken, "-") == 0 || strcmp(subtoken, "*") == 0 || strcmp(subtoken, "/") == 0 || strcmp(subtoken, "%") == 0) {
+                        printf("Operador encontrado en linea %d: '%s'\n", numero_linea, subtoken); // Depuración
                         if (espera_tipo) {
                             printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Operador seguido de palabra reservada
                             return;
                         }
                         estado = OPERADOR; // Estado para operadores aritméticos
                         printf("Operador en linea %d: %s\n", numero_linea, subtoken); // Depuración
-                        requiere_fin = 1;
+
+                        printf("\n\t Operador ");
                     } else {
+                        //printf("Token no reconocido antes de chequeo en linea %d: '%s'\n", numero_linea, subtoken); // Depuración
                         if (isdigit(subtoken[0]) || subtoken[0] == '.' || subtoken[0] == '+' || subtoken[0] == '-') {
                             if (espera_tipo) {
-                                printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Palabra reservada seguida de un número
+                                printf("Error en linea %d: %s", numero_linea, linea); // Error: Palabra reservada seguida de un numero
                                 return;
                             }
                             if (!es_const_num(subtoken, tipo_actual)) {
-                                printf("Error en linea %d: %s", numero_linea, linea); // Depuración
+                                printf("Error en linea %d: %s", numero_linea, linea); 
                                 return;
                             }
                             requiere_fin = 1;
@@ -186,13 +192,13 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
                             while (subtoken[i] != '\0') {
                                 estado = transicion(estado, subtoken[i]);
                                 if (estado == ERROR) {
-                                    printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
+                                    printf("Error en linea %d: %s", numero_linea, linea); 
                                     return;
                                 }
                                 i++;
                             }
-                            if (estado != C5) { // Identificador válido en Java
-                                printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
+                            if (estado != C5) { // Identificador valido en Java
+                                printf("Error en linea %d: %s", numero_linea, linea); // Depuración
                                 return;
                             }
                             if (espera_tipo) {
@@ -200,12 +206,12 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
                             }
                             requiere_fin = 1;
                         } else {
-                            // Manejo de operadores y caracteres inválidos
+                            // Manejo de operadores y caracteres invalidos
                             if (strpbrk(subtoken, "#")) {
-                                printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
+                                printf("Error en linea %d: %s", numero_linea, linea); 
                                 return;
                             } else {
-                                printf("Error en linea %d: %s\n", numero_linea, linea); // Depuración
+                                printf("Error en linea %d: %s", numero_linea, linea); 
                                 return;
                             }
                         }
@@ -217,8 +223,8 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
         }
         token++;
     }
-    
 }
+
 
 void analizar_archivo(const char *nombre_archivo) {
     FILE *archivo = fopen(nombre_archivo, "r");
@@ -230,12 +236,13 @@ void analizar_archivo(const char *nombre_archivo) {
     char linea[MAX];
     int numero_linea = 1;
     int com_multi = 0;
-
+    
     while (fgets(linea, MAX, archivo)) {
         analizar_linea(linea, numero_linea, &com_multi);
         numero_linea++;
     }
-
+    
+    //analizar_linea("public + ", numero_linea, &com_multi);
     fclose(archivo);
 }
 
