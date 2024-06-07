@@ -217,11 +217,7 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
         }
         token++;
     }
-    /*
-    if (requiere_fin && !fin_sentencia){
-        printf("Error en linea %d: Falta punto y coma al final de la sentencia\n", numero_linea);
-    }
-    */
+    
 }
 
 void analizar_archivo(const char *nombre_archivo) {
