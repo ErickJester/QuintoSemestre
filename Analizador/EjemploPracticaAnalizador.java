@@ -66,13 +66,13 @@ public class EjemploPracticaAnalizador {
         int resultado = 1 / 0; // Error: division por cero
         int operacion = 5 * * 2; // Error: uso incorrecto de operador aritmetico
 
-        
+        /*        
           Errores extra
           int errorEntero1 = 1     // Error: los enteros no deben comenzar con cero
           float errorFlotante1 = 1.; // Error: falta la parte decimal
           double errorDoble1 = 1.23E-; // Error: exponente incompleto
-
-        public +
+        */
+    
         
     }
 }

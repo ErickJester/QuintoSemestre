@@ -150,32 +150,32 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
                     if (strcmp(subtoken, "int") == 0 || strcmp(subtoken, "float") == 0 || strcmp(subtoken, "double") == 0 ||
                         strcmp(subtoken, "public") == 0 || strcmp(subtoken, "private") == 0 || strcmp(subtoken, "class") == 0 || strcmp(subtoken, "void") == 0) {
 
-                        //printf("Palabra reservada encontrada en linea %d: '%s'\n", numero_linea, subtoken); // Depuración
+                        //printf("Palabra reservada encontrada en linea %d: '%s'\n", numero_linea, subtoken); 
 
-                        if (espera_tipo && strcmp(subtoken, "class") != 0) { // Permitir "class" después de "public"
+                        if (espera_tipo && strcmp(subtoken, "class") != 0) { 
                             printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Palabra reservada seguida de otra palabra reservada
                             return;
                         }
                         estado = RESERVADA; // Estado para palabras reservadas de Java
                         espera_tipo = 1;
 
-                        //printf("Palabra reservada en linea %d: %s\n", numero_linea, subtoken); // Depuración
+                        //printf("Palabra reservada en linea %d: %s\n", numero_linea, subtoken); 
 
                         if (estado == RESERVADA) {
                             //printf("\n\t Reservada ");
                         }
                     } else if (strcmp(subtoken, "+") == 0 || strcmp(subtoken, "-") == 0 || strcmp(subtoken, "*") == 0 || strcmp(subtoken, "/") == 0 || strcmp(subtoken, "%") == 0) {
-                        printf("Operador encontrado en linea %d: '%s'\n", numero_linea, subtoken); // Depuración
+                        printf("Operador encontrado en linea %d: '%s'\n", numero_linea, subtoken); 
                         if (espera_tipo) {
                             printf("Error en linea %d: %s\n", numero_linea, linea); // Error: Operador seguido de palabra reservada
                             return;
                         }
-                        estado = OPERADOR; // Estado para operadores aritméticos
-                        printf("Operador en linea %d: %s\n", numero_linea, subtoken); // Depuración
+                        estado = OPERADOR; // Estado para operadores aritmeticos
+                        printf("Operador en linea %d: %s\n", numero_linea, subtoken); 
 
                         printf("\n\t Operador ");
                     } else {
-                        //printf("Token no reconocido antes de chequeo en linea %d: '%s'\n", numero_linea, subtoken); // Depuración
+                        //printf("Token no reconocido antes de chequeo en linea %d: '%s'\n", numero_linea, subtoken); 
                         if (isdigit(subtoken[0]) || subtoken[0] == '.' || subtoken[0] == '+' || subtoken[0] == '-') {
                             if (espera_tipo) {
                                 printf("Error en linea %d: %s", numero_linea, linea); // Error: Palabra reservada seguida de un numero
@@ -198,11 +198,11 @@ void analizar_linea(const char *linea, int numero_linea, int *com_multi) {
                                 i++;
                             }
                             if (estado != C5) { // Identificador valido en Java
-                                printf("Error en linea %d: %s", numero_linea, linea); // Depuración
+                                printf("Error en linea %d: %s", numero_linea, linea); 
                                 return;
                             }
                             if (espera_tipo) {
-                                espera_tipo = 0; // Después de un identificador, ya no se espera un tipo
+                                espera_tipo = 0; // Despues de un identificador, ya no se espera un tipo
                             }
                             requiere_fin = 1;
                         } else {
