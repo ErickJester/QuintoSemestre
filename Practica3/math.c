@@ -41,4 +41,3 @@ double errcheck(double d, char *s) {
     }
     return d;
 }
-

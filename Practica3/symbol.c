@@ -21,7 +21,11 @@ Symbol *install(char *s, int t, double d) {
     sp->name = malloc(strlen(s) + 1); // +1 para '\0'
     strcpy(sp->name, s);
     sp->type = t;
-    sp->u.val = d;
+    if (t == VAR) {
+        sp->u.val = d;
+    } else if (t == VECTOR) {
+        sp->u.vec = *(Vector *)&d; // Asigna el valor del vector
+    }
     sp->next = symlist; // poner al frente de la lista
     symlist = sp;
     return sp;

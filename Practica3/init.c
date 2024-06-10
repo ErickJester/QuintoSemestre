@@ -45,3 +45,8 @@ void init() {  /* instalar constantes y predefinidos en la tabla */
         s->u.ptr = builtins[i].func;
     }
 }
+
+void execerror(char *s, char *t) {
+    fprintf(stderr, "Error: %s %s\n", s, t);
+    exit(1);
+}

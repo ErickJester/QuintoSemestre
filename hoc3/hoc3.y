@@ -1,8 +1,10 @@
 %{
 
 #include "hoc.h"
+#include <stdio.h>
 #include <math.h>
 
+void init();
 void yyerror (char *s);
 int yylex ();
 void warning(char *s, char *t);
@@ -27,7 +29,7 @@ extern double Pow(double, double);
 %left UNARYMINUS
 %right '^'
 
-%% /* A continuación las reglas gramaticales y las acciones */
+%% /* A continuaciï¿½n las reglas gramaticales y las acciones */
 list:   
 	| list '\n'
 	| list asgn '\n'
@@ -68,7 +70,7 @@ jmp_buf begin;
 char *progname;
 int lineno = 1;
 
-void main (int argc, char *argv[]){
+int main (int argc, char *argv[]){
 	progname=argv[0];
 	init();
 	setjmp(begin);
@@ -128,8 +130,7 @@ int yylex (){
   	return c;                                
 }
 
-void yyerror (char *s)  /* Llamada por yyparse ante un error */
-{
+void yyerror (char *s){	/* Llamada por yyparse ante un error */
 	warning(s, (char *) 0);
 }
 
