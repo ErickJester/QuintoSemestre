@@ -49,8 +49,7 @@ line:
     ;
 
 asgn:
-    VAR '=' expEscalar { printf("Asignando escalar %s\n", $1->name); $$ = $1; $1->u.val = $3; $1->type = VAR;  }
-    | VAR '=' vector { printf("Asignando: %s\n", $1->name); $$ = $1; $1->u.vec = *$3; $1->type = VECTOR; }
+    VAR '=' vector { printf("Asignando: %s\n", $1->name); $$ = $1; $1->u.vec = *$3; $1->type = VECTOR; }
     ;
 
 expVectorial:
@@ -60,7 +59,7 @@ expVectorial:
     | expVectorial 'x' expVectorial { $$ = productoCruz($1, $3); }
     | expEscalar '*' expVectorial { $$ = escalarVector($1, $3); }
     | expVectorial '*' expEscalar { $$ = escalarVector($3, $1); }
-    | VAR { printf("Usando variable %s \n", $1->name); if ($1->type != VECTOR) execerror("variable no es un vector", $1->name); $$ = &$1->u.vec; }
+    | VAR { if ($1->type != VECTOR) execerror("variable no es un vector", $1->name); $$ = &$1->u.vec; }
     | '(' expVectorial ')' { $$ = $2; }
     ;
 
@@ -92,7 +91,7 @@ listnum:
 %%
 
 int main() {
-    printf("Ingrese una expresión (o presione Ctrl+C para salir): \n");
+    printf("\n\nIngrese una expresión (o presione Ctrl+C para salir): \n");
     yyparse();
     return 0;
 }
@@ -107,7 +106,7 @@ int yylex(void) {
     while ((c = getchar()) == ' ' || c == '\t') {
         // Skip whitespaces and tabs
     }
-    printf("Leyendo caracter: %c\n", c);
+    //printf("Leyendo caracter: %c\n", c);
 
     if (c == '[') {
         in_vector = 1;
