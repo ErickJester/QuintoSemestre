@@ -1,5 +1,54 @@
 import re
+import time
 from collections import deque, defaultdict
+
+class Node:
+    def __init__(self, value, level=0):
+        self.value = value
+        self.children = []
+        self.level = level
+
+    def add_child(self, child):
+        self.children.append(child)
+
+class ParseTree:
+    def __init__(self):
+        self.root = None
+
+    def set_root(self, value):
+        self.root = Node(value)
+
+    def print_tree(self, node=None, indent="", last='updown'):
+        if node is None:
+            node = self.root
+
+        # Resaltamos los tokens de la expresión original en mayúsculas
+        if node.value in {"X", "Y", "Z", "(", ")", "+"}:
+            value_to_print = node.value.upper()
+        else:
+            value_to_print = node.value
+
+        if last == 'updown':
+            start_shape = ' '
+        elif last == 'up':
+            start_shape = '┌'
+        elif last == 'down':
+            start_shape = '└'
+        else:
+            start_shape = ' '
+
+        if len(node.children) > 0:
+            end_shape = '├'
+        else:
+            end_shape = '└'
+
+        print(indent + start_shape + value_to_print)
+
+        indent += "│  " if len(node.children) > 0 else "   "
+
+        for i, child in enumerate(node.children):
+            next_last = 'up' if i == 0 else 'down' if i == len(node.children) - 1 else 'updown'
+            self.print_tree(child, indent, next_last)
 
 class AutomataPila:
     def __init__(self):
@@ -17,6 +66,7 @@ class AutomataPila:
         self.derivaciones = []
         self.error_message = ""
         self.max_depth = 0
+        self.lines = []
 
     def validar_cadena(self, cadena):
         tokens = re.findall(r'[A-Za-z_][A-Za-z0-9_]*|[=+\-*/%()]|[0-9]+', cadena)
@@ -27,7 +77,6 @@ class AutomataPila:
 
         while self.pila:
             top, depth = self.pila.pop()
-            print(f"Pop: {top}, Depth: {depth}")  # Depuración
             self.max_depth = max(self.max_depth, depth)
             
             if top in self.gramatica and isinstance(self.gramatica[top], list):
@@ -38,7 +87,6 @@ class AutomataPila:
                         for elem in reversed(elementos):
                             if elem:  # No añadir elementos vacíos
                                 self.pila.append((elem, depth + 1))
-                                print(f"Push: {elem}, Depth: {depth + 1}")  # Depuración
                         self.derivaciones.append((top, elementos))
                         produccion_aplicada = True
                         break
@@ -89,51 +137,51 @@ class AutomataPila:
         return True
 
     def dibujar_arbol(self, cadena):
-        es_valida, profundidad = self.validar_cadena(cadena)
+        es_valida, _ = self.validar_cadena(cadena)
         if not es_valida:
             print(f"La cadena no pertenece a la gramática.\nRazón: {self.error_message}")
             return
 
-        print(f"Árbol de derivación (profundidad {profundidad}):\n")
-        #self.imprimir_arbol()
+        self.build_lines()
+        self.imprimir_arbol()
 
-    def imprimir_arbol(self):
-        worklist = deque([('S', 0)])
+    def build_lines(self):
+        tree = ParseTree()
+        tree.set_root("S")
+        current_node = tree.root
+
         derivaciones_dict = defaultdict(list)
         for produccion in self.derivaciones:
             derivaciones_dict[produccion[0]].append(produccion[1])
-        
-        visitados = set()
-        
-        while worklist:
-            nodo, nivel = worklist.popleft()
-            if (nodo, nivel) in visitados:
-                continue
-            visitados.add((nodo, nivel))
-            indent = "  " * nivel
-            print(f"{indent}{nodo}")
-            if nodo in derivaciones_dict:
-                for produccion in derivaciones_dict[nodo]:
-                    for elem in produccion:
-                        if elem in self.gramatica:
-                            worklist.append((elem, nivel + 1))
-                        else:
-                            indent_next = "  " * (nivel + 1)
-                            print(f"{indent_next}{elem}")
 
-        print("Árbol de derivación completado.")
+        worklist = deque([(current_node, "S")])
+        visitados = set()
+
+        while worklist:
+            parent_node, symbol = worklist.popleft()
+            if (symbol, parent_node.level) in visitados:
+                continue
+            visitados.add((symbol, parent_node.level))
+            if symbol in derivaciones_dict:
+                for produccion in derivaciones_dict[symbol]:
+                    for elem in produccion:
+                        new_node = Node(elem, parent_node.level + 1)
+                        parent_node.add_child(new_node)
+                        if elem in self.gramatica:
+                            worklist.append((new_node, elem))
+                        else:
+                            worklist.append((new_node, elem))
+
+        self.tree = tree
+
+    def imprimir_arbol(self):
+        if hasattr(self, 'tree'):
+            self.tree.print_tree()
 
 def main():
     automata = AutomataPila()
     expresion = "X = (Y + Z)"  # Ejemplo de entrada
-    
-    es_valida, profundidad = automata.validar_cadena(expresion)
-    if es_valida:
-        print(f"La cadena pertenece a la gramática. Profundidad del árbol: {profundidad}")
-        # Aseguramos que no se ejecute dos veces
-        #automata.imprimir_arbol()  # Comentado para evitar doble ejecución
-    else:
-        print(f"La cadena no pertenece a la gramática. Razón: {automata.error_message}")
+    automata.dibujar_arbol(expresion)
 
 if __name__ == "__main__":
     main()
