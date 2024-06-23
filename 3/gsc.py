@@ -1,54 +1,5 @@
 import re
-import time
 from collections import deque, defaultdict
-
-class Node:
-    def __init__(self, value, level=0):
-        self.value = value
-        self.children = []
-        self.level = level
-
-    def add_child(self, child):
-        self.children.append(child)
-
-class ParseTree:
-    def __init__(self):
-        self.root = None
-
-    def set_root(self, value):
-        self.root = Node(value)
-
-    def print_tree(self, node=None, indent="", last='updown'):
-        if node is None:
-            node = self.root
-
-        # Resaltamos los tokens de la expresión original en mayúsculas
-        if node.value in {"X", "Y", "Z", "(", ")", "+"}:
-            value_to_print = node.value.upper()
-        else:
-            value_to_print = node.value
-
-        if last == 'updown':
-            start_shape = ' '
-        elif last == 'up':
-            start_shape = '┌'
-        elif last == 'down':
-            start_shape = '└'
-        else:
-            start_shape = ' '
-
-        if len(node.children) > 0:
-            end_shape = '├'
-        else:
-            end_shape = '└'
-
-        print(indent + start_shape + value_to_print)
-
-        indent += "│  " if len(node.children) > 0 else "   "
-
-        for i, child in enumerate(node.children):
-            next_last = 'up' if i == 0 else 'down' if i == len(node.children) - 1 else 'updown'
-            self.print_tree(child, indent, next_last)
 
 class AutomataPila:
     def __init__(self):
@@ -66,10 +17,10 @@ class AutomataPila:
         self.derivaciones = []
         self.error_message = ""
         self.max_depth = 0
-        self.lines = []
 
     def validar_cadena(self, cadena):
         tokens = re.findall(r'[A-Za-z_][A-Za-z0-9_]*|[=+\-*/%()]|[0-9]+', cadena)
+        print(f"Tokens iniciales: {tokens}")
         self.pila = [('S', 0)]
         self.derivaciones = []
         self.error_message = ""
@@ -78,10 +29,12 @@ class AutomataPila:
         while self.pila:
             top, depth = self.pila.pop()
             self.max_depth = max(self.max_depth, depth)
+            print(f"Procesando: {top} a profundidad {depth}, tokens restantes: {tokens}, pila actual: {self.pila}")
             
             if top in self.gramatica and isinstance(self.gramatica[top], list):
                 produccion_aplicada = False
                 for produccion in self.gramatica[top]:
+                    print(f"Intentando aplicar producción: '{produccion}' para '{top}'")
                     if self.aplicar_produccion(produccion, tokens.copy()):
                         elementos = produccion.split()
                         for elem in reversed(elementos):
@@ -89,24 +42,31 @@ class AutomataPila:
                                 self.pila.append((elem, depth + 1))
                         self.derivaciones.append((top, elementos))
                         produccion_aplicada = True
+                        print(f"Producción aplicada: {produccion}")
                         break
                 if not produccion_aplicada:
                     self.error_message = f"No se pudo aplicar ninguna producción para el símbolo: {top} con los tokens restantes: {tokens}"
+                    print(self.error_message)
                     return False, self.max_depth
             elif top == 'id' and tokens and re.fullmatch(self.gramatica['id'], tokens[0]):
-                self.derivaciones.append((top, [tokens[0]]))
+                print(f"Reconocido 'id': {tokens[0]}")
+                self.derivaciones.append((f'id:{tokens[0]}', [tokens[0]]))
                 tokens.pop(0)
             elif top == 'num' and tokens and re.fullmatch(self.gramatica['num'], tokens[0]):
-                self.derivaciones.append((top, [tokens[0]]))
+                print(f"Reconocido 'num': {tokens[0]}")
+                self.derivaciones.append((f'num:{tokens[0]}', [tokens[0]]))
                 tokens.pop(0)
             elif tokens and tokens[0] == top:
+                print(f"Reconocido terminal: {tokens[0]}")
                 self.derivaciones.append((top, [tokens[0]]))
                 tokens.pop(0)
             else:
                 self.error_message = f"Esperaba {top} pero encontró {tokens[0] if tokens else 'fin de cadena'}"
+                print(self.error_message)
                 return False, self.max_depth
         if tokens:
             self.error_message = f"Tokens restantes después de procesar la pila: {tokens}"
+            print(self.error_message)
             return False, self.max_depth
         return True, self.max_depth
 
@@ -118,69 +78,72 @@ class AutomataPila:
         temp_tokens = tokens[:]
         
         for elem in elementos:
+            print(f"Intentando aplicar {elem} a {temp_tokens}")
             if elem == 'id':
                 if not temp_tokens or not re.fullmatch(self.gramatica['id'], temp_tokens[0]):
+                    print(f"Fallo al aplicar 'id' con tokens {temp_tokens}")
                     return False
                 temp_tokens.pop(0)
             elif elem == 'num':
                 if not temp_tokens or not re.fullmatch(self.gramatica['num'], temp_tokens[0]):
+                    print(f"Fallo al aplicar 'num' con tokens {temp_tokens}")
                     return False
                 temp_tokens.pop(0)
             elif elem in self.gramatica:
                 if not any(self.aplicar_produccion(p, temp_tokens) for p in self.gramatica[elem]):
+                    print(f"Fallo al aplicar producción recursiva: {elem} en producción {produccion}")
                     return False
             elif temp_tokens and temp_tokens[0] == elem:
                 temp_tokens.pop(0)
             else:
+                print(f"Fallo al aplicar terminal: {elem} en producción {produccion}")
                 return False
         tokens[:] = temp_tokens
         return True
 
     def dibujar_arbol(self, cadena):
-        es_valida, _ = self.validar_cadena(cadena)
-        if not es_valida:
-            print(f"La cadena no pertenece a la gramática.\nRazón: {self.error_message}")
+        es_valida, profundidad = self.validar_cadena(cadena)
+        if es_valida:
+            print(f"La cadena pertenece a la gramática.")
+        else:
+            print(f"La cadena no pertenece a la gramática. Error: {self.error_message}")
             return
 
-        self.build_lines()
+        print(f"Árbol de derivación (profundidad {profundidad}):\n")
+        print(f"Arbol")
         self.imprimir_arbol()
 
-    def build_lines(self):
-        tree = ParseTree()
-        tree.set_root("S")
-        current_node = tree.root
-
+    def imprimir_arbol(self):  # Función modificada para imprimir correctamente el árbol
         derivaciones_dict = defaultdict(list)
         for produccion in self.derivaciones:
             derivaciones_dict[produccion[0]].append(produccion[1])
-
-        worklist = deque([(current_node, "S")])
-        visitados = set()
-
-        while worklist:
-            parent_node, symbol = worklist.popleft()
-            if (symbol, parent_node.level) in visitados:
-                continue
-            visitados.add((symbol, parent_node.level))
-            if symbol in derivaciones_dict:
-                for produccion in derivaciones_dict[symbol]:
+        
+        def imprimir_nodo(nodo, nivel, visitados):  # Añadido parámetro visitados
+            indent = "  " * nivel
+            print(f"{indent}{nodo}")
+            visitados.add(nodo)  # Marcar nodo como visitado
+            if nodo in derivaciones_dict:
+                for produccion in derivaciones_dict[nodo]:
                     for elem in produccion:
-                        new_node = Node(elem, parent_node.level + 1)
-                        parent_node.add_child(new_node)
-                        if elem in self.gramatica:
-                            worklist.append((new_node, elem))
+                        if elem in self.gramatica and elem not in visitados:  # Evitar nodos ya visitados
+                            imprimir_nodo(elem, nivel + 1, visitados)  # Llamada recursiva para subnodos
+                        elif ':' in elem:
+                            real_elem = elem.split(':')[1]
+                            indent_next = "  " * (nivel + 1)
+                            print(f"{indent_next}{real_elem}")
+                        elif elem == '':  # Manejar epsilon
+                            indent_next = "  " * (nivel + 1)
+                            print(f"{indent_next}ε")
                         else:
-                            worklist.append((new_node, elem))
+                            indent_next = "  " * (nivel + 1)
+                            print(f"{indent_next}{elem}")
 
-        self.tree = tree
-
-    def imprimir_arbol(self):
-        if hasattr(self, 'tree'):
-            self.tree.print_tree()
+        imprimir_nodo('S', 0, set())  # Llamada inicial con el símbolo de inicio
 
 def main():
     automata = AutomataPila()
     expresion = "X = (Y + Z)"  # Ejemplo de entrada
+    
     automata.dibujar_arbol(expresion)
 
 if __name__ == "__main__":
