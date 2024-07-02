@@ -1,93 +1,101 @@
 import re
 
-def read_afd_file(filename):
-    print(f"Leyendo archivo {filename}...")
-    with open(filename, 'r') as file:
-        lines = file.readlines()
+def leer_afd(archivo):
+    with open(archivo, 'r') as file:
+        lineas = file.readlines()
     
-    alphabet = lines[0].strip().split(', ')
-    states = lines[1].strip().split(', ')
-    acceptance_states = lines[2].strip().split(', ')
-    equations = [line.strip() for line in lines[3:]]
+    alfabeto = lineas[0].strip().split(', ')
+    estados = lineas[1].strip().split(', ')
+    estados_aceptacion = lineas[2].strip().split(', ')
+    transiciones = {}
+    for linea in lineas[3:]:
+        estado, trans = linea.strip().split(' = ')
+        transiciones[estado] = trans
     
-    print("Alfabeto:", alphabet)
-    print("Estados:", states)
-    print("Estados de aceptación:", acceptance_states)
-    print("Ecuaciones:", equations)
-    
-    return alphabet, states, acceptance_states, equations
+    return alfabeto, estados, estados_aceptacion, transiciones
 
-def parse_equations(equations):
-    parsed_equations = {}
-    for equation in equations:
-        state, terms = parse_equation(equation)
-        parsed_equations[state] = terms
-    print("Ecuaciones parseadas:", parsed_equations)
-    return parsed_equations
+def simplificar_expresion(expresion, estado, expresiones):
+    partes = expresion.split(' + ')
+    resultado = []
 
-def parse_equation(equation):
-    state, expression = equation.split(' = ')
-    terms = expression.split(' + ')
-    parsed_terms = []
-    for term in terms:
-        if term == "/":
-            parsed_terms.append((term, state))
+    for parte in partes:
+        if parte == '/':
+            resultado.append('')
+        elif len(parte) > 1:
+            simbolo, siguiente_estado = parte[0], parte[1:]
+            if siguiente_estado == estado:
+                resultado.append(simbolo + '*')
+            elif siguiente_estado in expresiones:
+                if expresiones[siguiente_estado]:
+                    nueva_parte = simbolo + '(' + expresiones[siguiente_estado] + ')'
+                    if nueva_parte not in resultado:
+                        resultado.append(nueva_parte)
+                else:
+                    resultado.append(simbolo)
+            else:
+                resultado.append(simbolo + siguiente_estado)
         else:
-            match = re.match(r"(\d*)(\w+)", term)
-            if match:
-                input_symbol = match.group(1)
-                next_state = match.group(2)
-                parsed_terms.append((input_symbol, next_state))
-    return state, parsed_terms
+            resultado.append(parte)
 
-def resolve_equations(states, parsed_equations):
-    regex = {state: "" for state in states}
+    resultado = [r for r in resultado if r]
+    return ' + '.join(resultado)
+
+def simplificar_expresion_final(expresion):
+    expresion = expresion.replace('/ + ', '').replace(' + /', '').replace('/', '')  # Eliminar el lambda redundante
+    expresion = re.sub(r'\b(\w)\1*\b', r'\1*', expresion)  # Simplificar aa* a a*
+    expresion = re.sub(r'\b(\w)\b \+ \b\1\b', r'\1', expresion)  # Simplificar a + a a a
+    expresion = re.sub(r'\(([^()]+)\)', lambda m: m.group(1) if '+' not in m.group(1) else m.group(0), expresion)  # Eliminar paréntesis innecesarios
+    expresion = re.sub(r'\*\*', '*', expresion)  # Eliminar Kleene star redundantes
+    return expresion
+
+def resolver_arden(transiciones):
+    expresiones = {estado: transiciones[estado] for estado in transiciones}
+    cambios = True
     
-    # Inicialmente, asignar la expresión base
-    for state, terms in parsed_equations.items():
-        regex[state] = ' + '.join([f"{input_symbol}{next_state}" if input_symbol != "/" else f"({state})*" for input_symbol, next_state in terms])
-
-    print("Expresiones iniciales:", regex)
-
-    # Iterar hasta que todas las referencias de estados sean reemplazadas
-    converged = False
-    while not converged:
-        converged = True
-        for state in states:
-            new_expr = regex[state]
-            for s in states:
-                if s in new_expr:
-                    new_expr = new_expr.replace(s, f"({regex[s]})")
-            new_expr = re.sub(r'\((\w+)\)', r'\1', new_expr)  # Simplificar si es posible
-            new_expr = simplify_expression(new_expr)
-            if new_expr != regex[state]:
-                converged = False
-            regex[state] = new_expr
-            print(f"Expresión actualizada para el estado {state}: {regex[state]}")
+    while cambios:
+        cambios = False
+        for estado in expresiones:
+            ecuacion = expresiones[estado]
+            nueva_expresion = simplificar_expresion(ecuacion, estado, expresiones)
+            
+            if nueva_expresion != expresiones[estado]:
+                expresiones[estado] = nueva_expresion
+                cambios = True
+                print(f"Actualización en el estado {estado}: {nueva_expresion}")
     
-    final_regex = regex['X0']
-    final_regex = re.sub(r'\(\(\)\)\*', '', final_regex)  # Simplificar si es posible
-    
-    if not final_regex.endswith("λ"):
-        final_regex += "+λ"
-        
-    return final_regex
+    return expresiones
 
-def simplify_expression(expression):
-    # Simplificar expresión removiendo paréntesis innecesarios
-    expression = re.sub(r'\((\w+)\)', r'\1', expression)
-    expression = re.sub(r'\(\(\)\)\*', '', expression)
-    expression = re.sub(r'\+\)', ')', expression)
-    expression = re.sub(r'\(\+', '(', expression)
-    expression = expression.replace('((', '(').replace('))', ')')
-    return expression
+def simplificar_expresion_final(expresion):
+    # Eliminar lambda redundante
+    expresion = re.sub(r'(\b/)', '', expresion)
+    # Simplificar aa* a a*
+    expresion = re.sub(r'\b(\w)\1*\b', r'\1*', expresion)
+    # Simplificar a + a a a
+    expresion = re.sub(r'\b(\w)\b \+ \b\1\b', r'\1', expresion)
+    # Eliminar paréntesis innecesarios
+    expresion = re.sub(r'\(([^()]+)\)', lambda m: m.group(1) if '+' not in m.group(1) else m.group(0), expresion)
+    # Eliminar Kleene star redundantes
+    expresion = re.sub(r'\*\*', '*', expresion)
+    return expresion
 
 def main():
-    filename = 'AFD.txt'
-    alphabet, states, acceptance_states, equations = read_afd_file(filename)
-    parsed_equations = parse_equations(equations)
-    result_regex = resolve_equations(states, parsed_equations)
-    print(f"L(AFD) = {result_regex}")
+    archivo_entrada = 'AFD.txt'
+    alfabeto, estados, estados_aceptacion, transiciones = leer_afd(archivo_entrada)
+    
+    print("Alfabeto:", alfabeto)
+    print("Estados:", estados)
+    print("Estados de aceptación:", estados_aceptacion)
+    print("Transiciones:", transiciones)
+    
+    expresiones_regulares = resolver_arden(transiciones)
+    
+    expresiones_regulares = {estado: simplificar_expresion_final(exp) for estado, exp in expresiones_regulares.items()}
+    
+    print("Expresiones regulares:", expresiones_regulares)
+    
+    estado_inicial = estados[0]
+    expresion_regular_inicial = expresiones_regulares.get(estado_inicial, "")
+    print(f"L(AFD) = {expresion_regular_inicial}")
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

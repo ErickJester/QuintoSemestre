@@ -22,41 +22,42 @@ void simplificar_expresion(char *expresion) {
     int token_count = 0;
     int i, j;
 
-    // Tokenizar la expresion por el delimitador '+'
     strcpy(temp, expresion);
     char *token = strtok(temp, "+");
     while (token != NULL) {
-        tokens[token_count++] = token;
+        int es_duplicado = 0;
+        for (i = 0; i < token_count; i++) {
+            if (strcmp(tokens[i], token) == 0) {
+                es_duplicado = 1;
+                break;
+            }
+        }
+        if (!es_duplicado) {
+            tokens[token_count++] = token;
+        }
         token = strtok(NULL, "+");
     }
 
-    // Eliminar duplicados
-    for (i = 0; i < token_count; i++) {
-        for (j = i + 1; j < token_count; j++) {
-            if (strcmp(tokens[i], tokens[j]) == 0) {
-                int k;
-                for (k = j; k < token_count - 1; k++) {
-                    tokens[k] = tokens[k + 1];
-                }
-                token_count--;
-                j--;  // Volver a comprobar la nueva posicion
-            }
-        }
+    if (token_count > 0) {
+        strcpy(expresion, tokens[0]);
+    } else {
+        expresion[0] = '\0';
     }
-
-    // Reconstruir la expresion sin duplicados
-    strcpy(expresion, tokens[0]);
     for (i = 1; i < token_count; i++) {
         strcat(expresion, "+");
         strcat(expresion, tokens[i]);
     }
+
+    // Depuración
+    printf("Expresión simplificada: %s\n", expresion);
 }
+
+
 
 void limpiar_y_validar(char *expresion) {
     char temp[MAX_BUFFER];
     int i, j = 0;
 
-    // Eliminar espacios innecesarios
     for (i = 0; i < strlen(expresion); i++) {
         if (expresion[i] != ' ') {
             temp[j++] = expresion[i];
@@ -65,7 +66,6 @@ void limpiar_y_validar(char *expresion) {
     temp[j] = '\0';
     strcpy(expresion, temp);
 
-    // Validar parentesis balanceados (opcional, pero recomendado)
     int balance = 0;
     for (i = 0; i < strlen(expresion); i++) {
         if (expresion[i] == '(') {
@@ -87,7 +87,7 @@ void limpiar_y_validar(char *expresion) {
 
 // Función para reemplazar todas las ocurrencias de un substring en una string   
 void replace_all(char *str, const char *old, const char *new_str) {
-    char buffer[1024];
+    char buffer[4096];  // Aumentar el tamaño del buffer si es necesario
     char *pos;
     int old_len = strlen(old);
     int new_len = strlen(new_str);
@@ -95,17 +95,15 @@ void replace_all(char *str, const char *old, const char *new_str) {
     buffer[0] = '\0';
 
     while ((pos = strstr(str, old)) != NULL) {
-        // Copiar la parte de la cadena antes del substring 'old'
         strncat(buffer, str, pos - str);
-        // Anadir el substring 'new_str'
         strcat(buffer, new_str);
-        // Mover el puntero de 'str' mas alla del 'old' reemplazado
         str = pos + old_len;
     }
-    // Anadir la parte restante de 'str'
     strcat(buffer, str);
-    // Copiar el contenido del buffer de vuelta a 'str'
     strcpy(str, buffer);
+
+    // Depuración
+    printf("Reemplazo de '%s' por '%s': %s\n", old, new_str, str);
 }
 
 
@@ -114,26 +112,27 @@ void agrupar_expresion(char *nueva_expresion, char *resultado_actual, char *nuev
     if (strlen(resultado_actual) == 0) {
         strcpy(nuevo_resultado, nueva_expresion);
     } else {
-        snprintf(nuevo_resultado, MAX_BUFFER, "(%s) + (%s)", nueva_expresion, resultado_actual);
+        snprintf(nuevo_resultado, MAX_BUFFER, "(%s)+(%s)", nueva_expresion, resultado_actual);
     }
+
+    // Depuración
+    printf("Expresión agrupada: %s\n", nuevo_resultado);
 }
+
 
 // Función principal para aplicar el Teorema de Arden
 void aplicar_teorema_arden(AFD *afd, char *expresion_regular) {
-    char resultado[MAX_BUFFER] = "";  // Inicialmente, la expresion regular es vacia
-    
-    // Iterar sobre las ecuaciones en orden
+    char resultado[MAX_BUFFER] = "";
+
     for (int i = 0; i < afd->num_equations; i++) {
         char temp[MAX_BUFFER];
         strcpy(temp, afd->equations[i]);
 
-        // Dividir la ecuacion en lado izquierdo (li) y lado derecho (ld)
-        char *li = strtok(temp, "=");  // Lado izquierdo de la ecuacion
-        char *ld = strtok(NULL, "=");  // Lado derecho de la ecuacion
+        char *li = strtok(temp, "=");
+        char *ld = strtok(NULL, "=");
 
         printf("Procesando ecuacion %d: %s = %s\n", i, li, ld);
 
-        // Simplificar el lado derecho eliminando espacios en blanco
         char simp_ld[MAX_BUFFER];
         int j = 0;
         for (int k = 0; k < strlen(ld); k++) {
@@ -145,7 +144,6 @@ void aplicar_teorema_arden(AFD *afd, char *expresion_regular) {
 
         printf("Lado derecho simplificado: %s\n", simp_ld);
 
-        // Reemplazar todas las variables Xn en el lado derecho con el resultado actual
         for (int k = 0; k < afd->num_states; k++) {
             char var[3];
             sprintf(var, "X%d", k);
@@ -154,12 +152,10 @@ void aplicar_teorema_arden(AFD *afd, char *expresion_regular) {
 
         printf("Lado derecho despues de reemplazar variables: %s\n", simp_ld);
 
-        // Limpiar y validar la expresion simplificada
         limpiar_y_validar(simp_ld);
 
         printf("Lado derecho despues de limpiar y validar: %s\n", simp_ld);
 
-        // Actualizar el resultado acumulado usando la funcion auxiliar de agrupacion
         char nuevo_resultado[MAX_BUFFER];
         agrupar_expresion(simp_ld, resultado, nuevo_resultado);
         strcpy(resultado, nuevo_resultado);
@@ -167,12 +163,10 @@ void aplicar_teorema_arden(AFD *afd, char *expresion_regular) {
         printf("Resultado acumulado: %s\n", resultado);
     }
 
-    // Simplificar la expresion final eliminando duplicados
     simplificar_expresion(resultado);
 
     printf("Resultado final simplificado: %s\n", resultado);
 
-    // Copiar el resultado final a la expresion regular
     strcpy(expresion_regular, resultado);
 }
 
